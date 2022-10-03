@@ -3,35 +3,36 @@ clc
 %clear
 
 % SNR range from 0 to 10 by step of 0.1 db
-EbN0_dB_range = -3:0.1:20;
+EbN0_dB_range = -10:0.1:20;
 
 % compare BER computed manually and mathematic model 
 semilogy(EbN0_dB_range,0) % force log scale in y
 hold on
-% for BPSK modulation
-BER_pratical(EbN0_dB_range/3,2);
+% for BPSK modulation (reduce SNR range)
 BER_theoric(EbN0_dB_range/3);
+BER_pratical(EbN0_dB_range/3,2);
 % for others modulations
 BER_pratical(EbN0_dB_range,4);
-BER_pratical(EbN0_dB_range,8);
 BER_pratical(EbN0_dB_range,16);
-BER_pratical(EbN0_dB_range,32);
+BER_pratical(EbN0_dB_range,64);
+BER_pratical(EbN0_dB_range,256);
 legend({ ...
     "BPSK theorical" ...
     "BPSK", ...
     "QPSK", ...
-    "8QAM", ...
     "16QAM", ...
-    "32QAM", ...    
+    "64QAM", ...
+    "256QAM", ...    
     });
 hold off
 
 
 % Compte BER for a given SNR range
 function BER_pratical(EbN0_dB_range, qam)
-    BER=[];
+    BER=[];    
     for EbN0 = EbN0_dB_range
-        BER=[BER BER_pratical_(EbN0, qam)];
+        SNR=EbN0 + 10*log10(log2(qam))
+        BER=[BER BER_pratical_(SNR, qam)];
     end
 
     semilogy(EbN0_dB_range, BER) % , 'DisplayName', sprintf("BER for %dQAM",qam))
@@ -39,37 +40,45 @@ end
 
 % Compute BER for a given SNR
 function BER = BER_pratical_(EbN0_db, qam)
+    % modulation order
+    k=log2(qam);
+
     % generate random data
-    data_sent = randi([0 1], 1000, 1);
+    data_sent = randi([0 qam-1], 10000, 1);
+
     % modulate
     if qam <= 2
         x = genqammod(data_sent, [-1 1]);
     else
         x = qammod(data_sent, qam);
-    end
+    end    
+
     % add noise
     y = awgn(x, EbN0_db, 'measured');
+
     % demodulate
     if qam <= 2
         data_received = genqamdemod(y,[-1 1]);
     else
         data_received = qamdemod(y,qam);
     end
-    % compute BER
-    BER = 0;
-    for index = 1:length(data_sent)
-        if data_sent(index) ~= data_received(index)
-            BER = BER+1;
-        end
-    end
-    BER = BER / length(data_sent)  ;
+
+    % compute BER    
+    data_sent_bin_matrix = int2bit(data_sent, k);
+    data_sent_bin = data_sent_bin_matrix(:); % return data in column vector
+    
+    data_recv_bin_matrix = int2bit(data_received, k);
+    data_recv_bin = data_recv_bin_matrix(:); % return data in column vector
+
+    [nb_err, BER]=biterr(data_sent_bin,data_recv_bin);
+        
 end
 
 % Compute BER using math modelisation i.e. based on erfc function
 function BER_theoric(EbN0_dB_range)
     EbN0 = 10.^(EbN0_dB_range/10);
-    BER = 1/2.*erfc(sqrt(EbN0));
-    semilogy(EbN0_dB_range, BER) %, 'DisplayName', 'BER theorical (BPSK)')
+    BER = 1/2*erfc(sqrt(EbN0));
+    plot(EbN0_dB_range, BER) %, 'DisplayName', 'BER theorical (BPSK)')
     grid on
     ylabel('BER')
     xlabel('E_b/N_0 (dB)')
