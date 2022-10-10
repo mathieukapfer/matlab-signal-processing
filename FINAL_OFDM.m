@@ -2,16 +2,18 @@ clc;
 %clear;
 %close all;
 
+modulation_order = 64
+
 %% Initializing parameters
-L=10000;  %input('Length Of OFDM Data = ');
-Ncp=L*0.0625;
+L=51*12*4 % OFDM block length of QPSK : RB * 12 * nb bits/RE
+Ncp=round(L*0.0625); % Length of OFDM CP
 %% Transmitter
 
 
 % data generation
-Tx_data=randi([0 15],L,Ncp);
+Tx_data=randi([0 modulation_order-1],L,Ncp);
 %%%%%%%%%%%%%%%%%%% QAM modulation %%%%%%%%%%%%%%%%%%%%%
-mod_data=qammod(Tx_data,16);
+mod_data=qammod(Tx_data,modulation_order);
 % Serial to Parallel
 s2p=mod_data.';
 % IFFT
@@ -22,12 +24,12 @@ p2s=am.';
 CP_part=p2s(:,end-Ncp+1:end); %Cyclic Prefix part to be appended.
 cp=[CP_part p2s];
 
-%%  Reciever
+%%  Receiver
 
 % Adding Noise using AWGN
 SNRstart=0;
 SNRincrement=1;
-SNRend=25;
+SNRend=10;
 c=0;
 r=zeros(size(SNRstart:SNRincrement:SNRend));
 for snr=SNRstart:SNRincrement:SNRend
@@ -42,16 +44,20 @@ for snr=SNRstart:SNRincrement:SNRend
 % Parallel to serial
     rserial=amdemod.';
 %%%%%%%%%%%%%%%%%%%% QAM demodulation %%%%%%%%%%%%%%%%%%%%%
-    Umap=qamdemod(rserial,16);
+    Umap=qamdemod(rserial,modulation_order);
 % Calculating the Bit Error Rate
     [n, r(c)]=biterr(Tx_data,Umap)
 
 end
 snr=SNRstart:SNRincrement:SNRend
 %% Plotting BER vs SNR
+
+hold on
 semilogy(snr,r,'-ok')
 grid on;
 
 title('OFDM Bit Error Rate .VS. Signal To Noise Ratio');
 ylabel('BER');
 xlabel('SNR [dB]');
+
+% hold off
