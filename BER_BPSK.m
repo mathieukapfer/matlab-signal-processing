@@ -10,7 +10,7 @@ semilogy(EbN0_dB_range,0) % force log scale in y
 hold on
 % for BPSK modulation (reduce SNR range)
 BER_theoric(EbN0_dB_range/3);
-%BER_pratical(EbN0_dB_range/3,2);
+BER_pratical(EbN0_dB_range/3,2);
 % for others modulations
 BER_pratical(EbN0_dB_range,4);
 BER_pratical(EbN0_dB_range,16);
